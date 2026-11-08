@@ -2,6 +2,7 @@
 
 Sichere Fahrrad-Navigation als iPhone-Web-App (PWA) für zwei Gebiete:
 - **Europa** (Startansicht: Düren)
+- **Österreich Ost**: Wien, Niederösterreich, Burgenland, Oberösterreich, Steiermark (Startansicht: Wien)
 - **Mallorca**
 
 Das Gebiet wählst du unter Einstellungen → Gebiet. Bist du per GPS im anderen Gebiet, wechselt die App beim Start automatisch dorthin.
