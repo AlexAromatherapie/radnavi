@@ -1,5 +1,5 @@
 /* RadNavi Service Worker: App offline startbar, besuchte Kartenkacheln werden zwischengespeichert. */
-const APP = 'radnavi-app-v4';
+const APP = 'radnavi-app-v5';
 const TILES = 'radnavi-tiles-v1';
 const MAX_TILES = 3000;
 const SHELL = [
