@@ -1,7 +1,7 @@
 # RadNavi
 
 Sichere Fahrrad-Navigation als iPhone-Web-App (PWA) für zwei Gebiete:
-- **Rur-Eifel**: Düren, Eifel, Aachen, Köln
+- **Europa** (Startansicht: Düren)
 - **Mallorca**
 
 Das Gebiet wählst du unter Einstellungen → Gebiet. Bist du per GPS im anderen Gebiet, wechselt die App beim Start automatisch dorthin.
