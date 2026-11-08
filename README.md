@@ -1,6 +1,12 @@
-# RadNavi Rur-Eifel
+# RadNavi
 
-Sichere Fahrrad-Navigation für Düren, die Eifel, Aachen und Köln, als iPhone-Web-App (PWA).
+Sichere Fahrrad-Navigation als iPhone-Web-App (PWA) für zwei Gebiete:
+- **Rur-Eifel**: Düren, Eifel, Aachen, Köln
+- **Mallorca**
+
+Das Gebiet wählst du unter Einstellungen → Gebiet. Bist du per GPS im anderen Gebiet, wechselt die App beim Start automatisch dorthin.
+
+Online: https://alexaromatherapie.github.io/radnavi/
 
 ## Funktionen
 - **Rennrad / Mountainbike**: zwei Routing-Profile (Rennrad nur befestigte Wege, MTB auch Wald- und Feldwege, Trails nur bis Schwierigkeit S2)
