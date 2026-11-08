@@ -749,7 +749,9 @@ if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.addEventListener
 function speak(text) {
   if (!S.voice || !('speechSynthesis' in window) || !text) return;
   try {
-    speechSynthesis.cancel();
+    // nur abbrechen, wenn wirklich gerade gesprochen wird – ein cancel() direkt vor speak() verschluckt unter iOS die Ansage
+    if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+    if (!voiceDe) pickVoice();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'de-DE'; if (voiceDe) u.voice = voiceDe; u.rate = 1.0;
     speechSynthesis.speak(u);
@@ -776,7 +778,6 @@ function arrowSvg(icon) {
 
 function startNav() {
   if (!S.route) return;
-  unlockSpeech();
   S.nav = { idx: 0, s: 0, nextI: 0, annFar: -1, annNear: -1, off: 0, found: false, lastReroute: 0, follow: true, done: false, rerouting: false };
   $('planner').hidden = true; $('routeSheet').hidden = true; hideResults(); map.closePopup();
   $('navTop').hidden = false; $('navBottom').hidden = false;
@@ -906,7 +907,14 @@ $('cbHills').checked = S.hills; $('cbVoice').checked = S.voice;
 let settingsDirty = false;
 rg.addEventListener('change', () => { S.safety = +rg.value; store.set('safety', S.safety); settingsDirty = true; });
 $('cbHills').addEventListener('change', (e) => { S.hills = e.target.checked; store.set('hills', S.hills); settingsDirty = true; });
-$('cbVoice').addEventListener('change', (e) => { S.voice = e.target.checked; store.set('voice', S.voice); if (S.voice) { unlockSpeech(); speak('Sprachansagen sind an.'); } });
+$('cbVoice').addEventListener('change', (e) => { S.voice = e.target.checked; store.set('voice', S.voice); if (S.voice) speak('Sprachansagen sind an.'); });
+$('btnVoiceTest').addEventListener('click', () => {
+  if (!('speechSynthesis' in window)) { toast('Dieser Browser hat keine Sprachausgabe.'); return; }
+  const was = S.voice; S.voice = true;
+  speak('Hallo! Die Sprachansagen von RadNavi funktionieren.');
+  S.voice = was;
+  toast('Nichts zu hören? Lautstärke hoch und Stummschalter am iPhone aus.', 6000);
+});
 document.querySelectorAll('#layerSeg button').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
 
 function setRegion(key) {
