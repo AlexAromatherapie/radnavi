@@ -1,0 +1,143 @@
+# RadNavi Rur-Eifel â€“ Sicherheitsprofil fuer BRouter
+# Platzhalter werden von der App ersetzt:
+#   %K%      Sicherheitsgewicht (0.4 = direkt ... 1.6 = maximal sicher)
+#   %ROAD%   true = Rennrad, false = Mountainbike
+#   %UPCOST% Kosten fuer Anstiege (0 = egal)
+
+---context:global
+
+assign validForBikes   = true
+assign k               = %K%
+assign isroad          = %ROAD%
+
+# Abbiegehinweise (voicehints) erzeugen
+assign turnInstructionMode = 1
+assign turnInstructionCatchingRange = 40
+assign turnInstructionRoundabouts = true
+
+assign downhillcost    = 0
+assign downhillcutoff  = 1.5
+assign uphillcost      = %UPCOST%
+assign uphillcutoff    = 1.5
+assign elevationpenaltybuffer = 5
+assign elevationmaxbuffer     = 10
+assign elevationbufferreduce  = 0
+
+---context:way
+
+assign turncost    = if junction=roundabout then 0 else 50
+assign initialcost = 0
+
+# --- Radverkehrsanlagen (Pruefung ueber OSM-Tags) ---
+assign isradweg = or highway=cycleway
+                  or bicycle=designated
+                     bicycle_road=yes
+
+assign cwtrack  = or cycleway=track|opposite_track
+                  or cycleway:left=track
+                     cycleway:right=track
+
+assign cwlane   = or cycleway=lane|opposite_lane
+                  or cycleway:left=lane
+                     cycleway:right=lane
+
+assign anyroute = or route_bicycle_icn=yes
+                  or route_bicycle_ncn=yes
+                  or route_bicycle_rcn=yes
+                     route_bicycle_lcn=yes
+
+# --- Zugangsrecht ---
+assign bikeok    = bicycle=yes|permissive|designated|destination
+assign bikeno    = bicycle=no|private|use_sidepath
+assign accessno  = and ( not bikeok )
+                       access=no|private|agricultural
+
+assign fastroad  = or highway=motorway|motorway_link|trunk|trunk_link
+                      motorroad=yes
+
+assign forbidden = if bikeno then true
+                   else if accessno then true
+                   else if fastroad then ( not bikeok )
+                   else false
+
+# Gehwege / Fussgaengerzonen ohne Radfreigabe: nur schieben
+assign pushonly  = and ( not or bikeok isradweg )
+                       highway=footway|pedestrian|steps|corridor|platform
+
+assign badoneway = if reversedirection=yes then
+                     ( if oneway:bicycle=no then false
+                       else if oneway:bicycle=yes then true
+                       else if junction=roundabout then true
+                       else oneway=yes|true|1 )
+                   else oneway=-1
+
+# --- Gefahrenwert je Wegtyp (1 = sicher) ---
+assign danger0 =
+  if isradweg then 1
+  else if cwtrack then 1.05
+  else if highway=track then 1.1
+  else if highway=path|bridleway then 1.15
+  else if highway=living_street then 1.15
+  else if highway=service then 1.25
+  else if highway=residential then 1.3
+  else if highway=unclassified|road then
+       ( if cwlane then 1.25 else 1.6 )
+  else if highway=tertiary|tertiary_link then
+       ( if cwlane then 1.5 else 2.4 )
+  else if highway=secondary|secondary_link then
+       ( if cwlane then 2.0 else 3.8 )
+  else if highway=primary|primary_link then
+       ( if cwlane then 3.0 else 6.5 )
+  else if highway=trunk|trunk_link|motorway|motorway_link then 10
+  else if highway=footway|pedestrian then 1.3
+  else 1.6
+
+assign danger1 = if anyroute then ( max 1 ( multiply 0.92 danger0 ) ) else danger0
+
+# k skaliert den Sicherheitsaufschlag (Sicherheit vs. Direktheit)
+assign safety  = add 1 ( multiply k ( add danger1 -1 ) )
+
+# --- Oberflaeche ---
+assign surfroad =
+  if surface=asphalt|paved|concrete then
+       ( if smoothness=bad|very_bad|horrible|very_horrible then 2.5 else 1 )
+  else if surface=paving_stones|metal|wood then 1.4
+  else if surface=compacted then 2.2
+  else if surface=fine_gravel then 2.6
+  else if surface=sett|cobblestone then 2.8
+  else if surface=gravel|pebblestone|dirt|ground|earth|grass|mud|sand|unpaved|grass_paver|rock then 8
+  else if highway=track then ( if tracktype=grade1 then 1.15 else 6 )
+  else if highway=path|bridleway then 4
+  else 1
+
+assign surfmtb =
+  if surface=asphalt|paved|concrete|paving_stones then 1.05
+  else if surface=compacted|fine_gravel|gravel|dirt|ground|earth|pebblestone|unpaved|rock then 1
+  else if surface=grass|grass_paver then 1.3
+  else if surface=sett|cobblestone then 1.4
+  else if surface=mud then 2
+  else if surface=sand then 2.5
+  else 1
+
+assign mtbscale =
+  if mtb:scale=0|0-|0+|1|1-|1+ then 1
+  else if mtb:scale=2|2-|2+ then 1.6
+  else if mtb:scale=3 then 5
+  else if mtb:scale=4|5|6 then 50
+  else 1
+
+assign surf = if isroad then surfroad else multiply surfmtb mtbscale
+
+assign costfactor =
+  if forbidden then 10000
+  else if badoneway then 10000
+  else if highway=steps then 40
+  else if pushonly then 12
+  else multiply safety surf
+
+---context:node
+
+assign initialcost =
+  if highway=traffic_signals then 20
+  else if barrier=gate|lift_gate|swing_gate|stile|turnstile then 30
+  else 0
