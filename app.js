@@ -5,8 +5,22 @@
 (function () {
 
 // ------------------------------------------------------------------ Konstanten
-const REGION = L.latLngBounds([50.15, 5.85], [51.10, 7.20]); // Köln – Aachen – Eifel
-const HOME = [50.80, 6.48];                                   // Düren
+const REGIONS = {
+  eifel: {
+    name: 'Rur-Eifel', area: 'Köln – Aachen – Eifel',
+    bounds: L.latLngBounds([50.15, 5.85], [51.10, 7.20]), home: [50.80, 6.48], zoom: 11,
+    hw: { unclassified: 'Gemeindestraße', road: 'Straße', tertiary: 'Kreisstraße', tertiary_link: 'Kreisstraße',
+      secondary: 'Landstraße', secondary_link: 'Landstraße', primary: 'Bundesstraße', primary_link: 'Bundesstraße',
+      trunk: 'Schnellstraße', trunk_link: 'Schnellstraße' },
+  },
+  mallorca: {
+    name: 'Mallorca', area: 'Mallorca',
+    bounds: L.latLngBounds([39.20, 2.25], [40.00, 3.55]), home: [39.62, 2.95], zoom: 10,
+    hw: { unclassified: 'Nebenstraße', road: 'Straße', tertiary: 'Nebenstraße', tertiary_link: 'Nebenstraße',
+      secondary: 'Landstraße', secondary_link: 'Landstraße', primary: 'Hauptstraße', primary_link: 'Hauptstraße',
+      trunk: 'Schnellstraße', trunk_link: 'Schnellstraße' },
+  },
+};
 const BROUTER = 'https://brouter.de/brouter';
 const PHOTON = 'https://photon.komoot.io';
 
@@ -26,11 +40,6 @@ const CATS = {
   sonst:    { label: 'Sonstiges',                color: '#94a3b8', onto: '' },
 };
 const CAT_ORDER = ['radweg', 'fstrasse', 'cwtrack', 'cwlane', 'gehrad', 'track', 'path', 'ruhig', 'strasse', 'haupt', 'schieben', 'sonst'];
-const HW_NAME = {
-  unclassified: 'Gemeindestraße', road: 'Straße', tertiary: 'Kreisstraße', tertiary_link: 'Kreisstraße',
-  secondary: 'Landstraße', secondary_link: 'Landstraße', primary: 'Bundesstraße', primary_link: 'Bundesstraße',
-  trunk: 'Schnellstraße', trunk_link: 'Schnellstraße',
-};
 
 // ------------------------------------------------------------------ Helfer
 const $ = (id) => document.getElementById(id);
@@ -92,11 +101,14 @@ const S = {
   hills: store.get('hills', false),
   voice: store.get('voice', true),
   layer: store.get('layer', 'cyclosm'),
+  region: store.get('region', 'eifel'),
   start: null, dest: null, route: null, alt: 0, pos: null, nav: null,
 };
+if (!REGIONS[S.region]) S.region = 'eifel';
+let RG = REGIONS[S.region];
 
 // ------------------------------------------------------------------ Karte
-const map = L.map('map', { zoomControl: false, maxBounds: REGION.pad(0.35), minZoom: 8, attributionControl: true }).setView(HOME, 11);
+const map = L.map('map', { zoomControl: false, maxBounds: RG.bounds.pad(0.35), minZoom: 8, attributionControl: true }).setView(RG.home, RG.zoom);
 map.attributionControl.setPrefix(false);
 const LAYERS = {
   cyclosm: L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc',
@@ -180,9 +192,10 @@ function photonSub(p) {
 
 function rememberRecent(pt) {
   if (pt.label === 'Kartenpunkt') return;
-  const list = store.get('recent', []).filter((r) => r.label !== pt.label);
+  const key = 'recent.' + S.region;
+  const list = store.get(key, []).filter((r) => r.label !== pt.label);
   list.unshift({ lat: pt.lat, lon: pt.lon, label: pt.label });
-  store.set('recent', list.slice(0, 6));
+  store.set(key, list.slice(0, 6));
 }
 
 // ------------------------------------------------------------------ Suche
@@ -208,18 +221,19 @@ function choose(which, pt) {
   if (which === 'dest' && !S.start) setPoint('start', { isGps: true, label: 'Mein Standort' });
   computeRoute();
 }
-function recentItems() { return store.get('recent', []).map((r) => ({ ...r, sub: 'Zuletzt gesucht' })); }
+function recentItems() { return store.get('recent.' + S.region, S.region === 'eifel' ? store.get('recent', []) : []).map((r) => ({ ...r, sub: 'Zuletzt gesucht' })); }
 
 async function doSearch(q, which) {
   const seq = ++searchSeq;
   const c = map.getCenter();
-  const url = `${PHOTON}/api/?q=${encodeURIComponent(q)}&lang=de&limit=7&bbox=5.85,50.15,7.20,51.10&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}`;
+  const b = RG.bounds;
+  const url = `${PHOTON}/api/?q=${encodeURIComponent(q)}&lang=de&limit=7&bbox=${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}`;
   try {
     const r = await fetch(url); const j = await r.json();
     if (seq !== searchSeq || searchFor !== which) return;
     const items = (j.features || []).map((f) => ({ lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: photonLabel(f.properties), sub: photonSub(f.properties) }))
       .filter((it) => it.label);
-    showResults(which, items, items.length ? '' : 'Nichts gefunden im Gebiet Köln – Aachen – Eifel');
+    showResults(which, items, items.length ? '' : 'Nichts gefunden im Gebiet ' + RG.area);
   } catch (e) {
     if (seq === searchSeq) showResults(which, [], 'Suche gerade nicht erreichbar – Punkt auf der Karte antippen');
   }
@@ -283,7 +297,13 @@ function startWatch() {
 }
 function onPos(p) {
   const c = p.coords;
+  const firstFix = !S.pos;
   S.pos = { lat: c.latitude, lon: c.longitude, acc: c.accuracy || 50, heading: c.heading, speed: c.speed, t: Date.now() };
+  if (firstFix && !S.nav && !RG.bounds.contains([S.pos.lat, S.pos.lon])) {
+    // automatisch ins Gebiet wechseln, in dem man sich gerade befindet
+    const k = Object.keys(REGIONS).find((key) => REGIONS[key].bounds.contains([S.pos.lat, S.pos.lon]));
+    if (k) { setRegion(k); toast('Gebiet gewechselt: ' + REGIONS[k].name); }
+  }
   drawMe();
   if (S.nav) navUpdate();
 }
@@ -519,10 +539,10 @@ function buildInstructions(R, hints) {
     if (r.cat === 'schieben' ? r.len < 15 : r.len < 120) continue;
     if (r.from < 5) continue;
     const near = out.find((o) => Math.abs(o.d - r.from) < 30);
-    const what = r.cat === 'schieben' ? `${fmtKm(r.len)} schieben` : `${fmtKm(r.len)} ${HW_NAME[r.hw] || 'Straße'} mit Autoverkehr`;
+    const what = r.cat === 'schieben' ? `${fmtKm(r.len)} schieben` : `${fmtKm(r.len)} ${RG.hw[r.hw] || 'Straße'} mit Autoverkehr`;
     if (near) { near.warn = what; near.sub = '⚠ ' + what; continue; }
     out.push({ d: r.from, idx: r.i0, icon: 'warn', text: r.cat === 'schieben' ? 'Absteigen' : 'Achtung', sub: what, warn: what,
-      say: r.cat === 'schieben' ? `Bitte absteigen und ${Math.round(r.len)} Meter schieben` : `Achtung: ${sayDist(r.len).replace('Metern', 'Meter').replace('Kilometern', 'Kilometer')} ${HW_NAME[r.hw] || 'Straße'} mit Autoverkehr`,
+      say: r.cat === 'schieben' ? `Bitte absteigen und ${Math.round(r.len)} Meter schieben` : `Achtung: ${sayDist(r.len).replace('Metern', 'Meter').replace('Kilometern', 'Kilometer')} ${RG.hw[r.hw] || 'Straße'} mit Autoverkehr`,
       sayLower: r.cat === 'schieben' ? 'absteigen und schieben' : `beginnt ein Abschnitt mit Autoverkehr`, cat: r.cat });
   }
   out.sort((a, b) => a.d - b.d);
@@ -584,7 +604,7 @@ function renderSheet(R) {
   const items = R.runs.filter((r) => CATS[r.cat].warn && (r.cat === 'schieben' ? r.len >= 15 : r.len >= 100));
   for (const r of items) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'warn';
-    const what = r.cat === 'schieben' ? `${fmtKm(r.len)} schieben (Treppe/Gehweg)` : `${fmtKm(r.len)} ${HW_NAME[r.hw] || 'Straße'} ohne Radweg`;
+    const what = r.cat === 'schieben' ? `${fmtKm(r.len)} schieben (Treppe/Gehweg)` : `${fmtKm(r.len)} ${RG.hw[r.hw] || 'Straße'} ohne Radweg`;
     b.innerHTML = `<i>!</i><span>${esc(what)} – bei km ${nf1.format(r.from / 1000)}</span>`;
     b.addEventListener('click', () => {
       const ll = []; for (let i = r.i0; i <= r.i1; i++) ll.push([R.pts[i].lat, R.pts[i].lon]);
@@ -599,12 +619,12 @@ function renderSheet(R) {
   }
 
   const notes = [];
-  if (R.routeLen > 50) notes.push(`${fmtKm(R.routeLen)} verlaufen auf beschilderten Radrouten (z. B. Knotenpunktnetz).`);
+  if (R.routeLen > 50) notes.push(`${fmtKm(R.routeLen)} verlaufen auf beschilderten Radrouten.`);
   notes.push('Linie antippen zeigt die OSM-Merkmale des Abschnitts.');
   const note = $('routeNote');
   note.className = 'small';
   if (R.fallback) { note.className = 'small alert'; notes.unshift('Sicherheitsprofil gerade nicht verfügbar – Ersatzprofil des Servers verwendet.'); }
-  if (!REGION.contains([R.to.lat, R.to.lon]) || !REGION.contains([R.from.lat, R.from.lon])) notes.unshift('Hinweis: Start oder Ziel liegt außerhalb des Gebiets Köln – Aachen – Eifel.');
+  if (!RG.bounds.contains([R.to.lat, R.to.lon]) || !RG.bounds.contains([R.from.lat, R.from.lon])) notes.unshift('Hinweis: Start oder Ziel liegt außerhalb des Gebiets ' + RG.area + '.');
   note.textContent = notes.join(' ');
   updateInsets();
   requestAnimationFrame(() => drawElevation(R));
@@ -677,7 +697,7 @@ $('btnAlt').addEventListener('click', () => { S.alt = (S.alt + 1) % 4; computeRo
 
 // ------------------------------------------------------------------ GPX
 function buildGpx(R) {
-  const name = `RadNavi ${R.mode === 'road' ? 'Rennrad' : 'MTB'}: ${R.from.label} – ${R.to.label}`;
+  const name = `RadNavi ${RG.name} ${R.mode === 'road' ? 'Rennrad' : 'MTB'}: ${R.from.label} – ${R.to.label}`;
   const pts = R.pts.map((q) => `<trkpt lat="${q.lat.toFixed(6)}" lon="${q.lon.toFixed(6)}">${q.ele != null ? `<ele>${q.ele}</ele>` : ''}</trkpt>`).join('\n');
   const wpts = R.instr.filter((i) => i.warn).map((i) => { const q = R.pts[i.idx]; return `<wpt lat="${q.lat.toFixed(6)}" lon="${q.lon.toFixed(6)}"><name>${esc(i.text)}</name><desc>${esc(i.warn)}</desc></wpt>`; }).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -871,6 +891,23 @@ rg.addEventListener('change', () => { S.safety = +rg.value; store.set('safety', 
 $('cbHills').addEventListener('change', (e) => { S.hills = e.target.checked; store.set('hills', S.hills); settingsDirty = true; });
 $('cbVoice').addEventListener('change', (e) => { S.voice = e.target.checked; store.set('voice', S.voice); if (S.voice) { unlockSpeech(); speak('Sprachansagen sind an.'); } });
 document.querySelectorAll('#layerSeg button').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
+
+function setRegion(key) {
+  if (!REGIONS[key]) return;
+  const changed = key !== S.region;
+  S.region = key; store.set('region', key); RG = REGIONS[key];
+  document.querySelectorAll('#regionSeg button').forEach((b) => b.classList.toggle('active', b.dataset.region === key));
+  $('inDest').placeholder = key === 'mallorca' ? 'Wohin auf Mallorca?' : 'Wohin?';
+  if (!changed) return;
+  if (S.start && !S.start.isGps) setPoint('start', null);
+  setPoint('dest', null);
+  clearRoute();
+  map.setMaxBounds(null);
+  map.setView(RG.home, RG.zoom);
+  map.setMaxBounds(RG.bounds.pad(0.35));
+}
+document.querySelectorAll('#regionSeg button').forEach((b) => b.addEventListener('click', () => { setRegion(b.dataset.region); closeSettings(); }));
+setRegion(S.region);
 function openSettings() { settingsDirty = false; $('settings').hidden = false; $('settingsBack').hidden = false; }
 function closeSettings() {
   $('settings').hidden = true; $('settingsBack').hidden = true;
