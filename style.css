@@ -118,6 +118,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .actions .primary { flex: 1; }
 .primary { background: var(--accent) !important; color: var(--accent-fg) !important; border: 0; border-radius: 12px; padding: 12px; font-weight: 700; }
 .wide { width: 100%; margin-top: 8px; }
+.testbtn { border: 0; border-radius: 12px; padding: 12px; background: var(--chip); font-weight: 600; margin-top: 10px; }
 
 .verify { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 0; margin-top: 8px; }
 .verify-head small { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 4px; }
