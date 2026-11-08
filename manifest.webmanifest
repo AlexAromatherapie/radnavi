@@ -1,7 +1,7 @@
 {
   "name": "RadNavi",
   "short_name": "RadNavi",
-  "description": "Sichere Fahrrad-Navigation für Rur-Eifel (Düren, Aachen, Köln) und Mallorca – Gravelbike und Mountainbike.",
+  "description": "Sichere Fahrrad-Navigation für Europa – Gravelbike und Mountainbike.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
