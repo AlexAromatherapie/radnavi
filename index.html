@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>RadNavi Rur-Eifel</title>
-<meta name="description" content="Sichere Fahrrad-Navigation für Düren, Eifel, Aachen und Köln – Rennrad und Mountainbike.">
+<title>RadNavi</title>
+<meta name="description" content="Sichere Fahrrad-Navigation für Rur-Eifel (Düren, Aachen, Köln) und Mallorca – Rennrad und Mountainbike.">
 <meta name="theme-color" content="#0a8f3c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -89,6 +89,11 @@
 <div id="settingsBack" class="backdrop" hidden></div>
 <section id="settings" class="sheet settings" hidden>
   <h2>Einstellungen</h2>
+  <div class="lbl">Gebiet</div>
+  <div class="seg" id="regionSeg">
+    <button type="button" data-region="eifel">Rur-Eifel</button>
+    <button type="button" data-region="mallorca">Mallorca</button>
+  </div>
   <label class="lbl" for="rgSafety">Routenwahl</label>
   <input type="range" id="rgSafety" min="0.4" max="1.6" step="0.1">
   <div class="range-labels"><span>Direkter</span><span id="safetyVal"></span><span>Sicherer</span></div>
