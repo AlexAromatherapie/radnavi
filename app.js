@@ -320,7 +320,12 @@ function onPosErr(err) {
 function gpsErrText(err) {
   if (!navigator.geolocation) return 'Dieses Gerät/dieser Browser bietet keine Ortung an.';
   if (!window.isSecureContext) return 'Ortung nur über https möglich.';
-  if (err && err.code === 1) return 'Ortung blockiert (Fehler 1). Bitte RadNavi in Safari öffnen und dort auf „Erlauben“ tippen.';
+  if (err && err.code === 1) {
+    const standalone = window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    return standalone
+      ? 'GPS gesperrt (Fehler 1): Im Vollbild-Modus blockiert dein iPhone die Ortung. Zum Navigieren bitte das RadNavi-Icon nehmen, das Safari öffnet.'
+      : 'GPS gesperrt (Fehler 1). iPhone: Einstellungen → Apps → Safari → Standort → „Erlauben“.';
+  }
   if (err && err.code === 2) return 'Standort nicht verfügbar (Fehler 2). Flugmodus aus, WLAN an oder kurz ans Fenster/nach draußen gehen.';
   return 'Noch kein GPS-Signal (Fehler 3). Kurz ans Fenster/nach draußen gehen und nochmal tippen.';
 }
