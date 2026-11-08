@@ -7,10 +7,11 @@
 // ------------------------------------------------------------------ Konstanten
 const REGIONS = {
   eifel: {
-    name: 'Rur-Eifel', area: 'Köln – Aachen – Eifel',
-    bounds: L.latLngBounds([50.15, 5.85], [51.10, 7.20]), home: [50.80, 6.48], zoom: 11,
-    hw: { unclassified: 'Gemeindestraße', road: 'Straße', tertiary: 'Kreisstraße', tertiary_link: 'Kreisstraße',
-      secondary: 'Landstraße', secondary_link: 'Landstraße', primary: 'Bundesstraße', primary_link: 'Bundesstraße',
+    // ganz Europa, Startansicht Düren (Schlüssel bleibt 'eifel', damit gespeicherte Einstellungen gelten)
+    name: 'Europa', area: 'Europa',
+    bounds: L.latLngBounds([34.0, -25.0], [71.5, 45.0]), home: [50.80, 6.48], zoom: 11,
+    hw: { unclassified: 'Verbindungsstraße', road: 'Straße', tertiary: 'Kreis-/Nebenstraße', tertiary_link: 'Kreis-/Nebenstraße',
+      secondary: 'Landstraße', secondary_link: 'Landstraße', primary: 'Hauptstraße', primary_link: 'Hauptstraße',
       trunk: 'Schnellstraße', trunk_link: 'Schnellstraße' },
   },
   mallorca: {
@@ -108,7 +109,7 @@ if (!REGIONS[S.region]) S.region = 'eifel';
 let RG = REGIONS[S.region];
 
 // ------------------------------------------------------------------ Karte
-const map = L.map('map', { zoomControl: false, maxBounds: RG.bounds.pad(0.35), minZoom: 8, attributionControl: true }).setView(RG.home, RG.zoom);
+const map = L.map('map', { zoomControl: false, maxBounds: RG.bounds.pad(0.1), minZoom: 4, attributionControl: true }).setView(RG.home, RG.zoom);
 map.attributionControl.setPrefix(false);
 const LAYERS = {
   cyclosm: L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc',
@@ -935,7 +936,7 @@ function setRegion(key) {
   clearRoute();
   map.setMaxBounds(null);
   map.setView(RG.home, RG.zoom);
-  map.setMaxBounds(RG.bounds.pad(0.35));
+  map.setMaxBounds(RG.bounds.pad(0.1));
 }
 document.querySelectorAll('#regionSeg button').forEach((b) => b.addEventListener('click', () => { setRegion(b.dataset.region); closeSettings(); }));
 setRegion(S.region);
