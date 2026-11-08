@@ -9,7 +9,7 @@ Das Gebiet wählst du unter Einstellungen → Gebiet. Bist du per GPS im anderen
 Online: https://alexaromatherapie.github.io/radnavi/
 
 ## Funktionen
-- **Rennrad / Mountainbike**: zwei Routing-Profile (Rennrad nur befestigte Wege, MTB auch Wald- und Feldwege, Trails nur bis Schwierigkeit S2)
+- **Gravelbike / Mountainbike**: zwei Routing-Profile, beide bevorzugen Radwege und autofreie Wege. Schotter und Waldwege sind erlaubt, Trails beim Gravelbike nur bis S1, beim MTB bis S2.
 - **Radweg-Prüfung**: Jeder Abschnitt der Route wird anhand seiner OpenStreetMap-Merkmale eingeordnet. Als „ausgewiesener Radweg“ zählt nur, was eindeutig so eingetragen ist:
   - `highway=cycleway` (eigenständiger Radweg)
   - `bicycle=designated` (blaues Radweg-Schild: Zeichen 237 / 240 / 241)
