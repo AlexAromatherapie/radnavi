@@ -14,6 +14,14 @@ const REGIONS = {
       secondary: 'Landstraße', secondary_link: 'Landstraße', primary: 'Hauptstraße', primary_link: 'Hauptstraße',
       trunk: 'Schnellstraße', trunk_link: 'Schnellstraße' },
   },
+  austria: {
+    // Wien, Niederösterreich, Burgenland, Oberösterreich, Steiermark
+    name: 'Österreich Ost', area: 'Wien, Niederösterreich, Burgenland, Oberösterreich und Steiermark',
+    bounds: L.latLngBounds([46.35, 12.70], [49.10, 17.20]), home: [48.2082, 16.3738], zoom: 11,
+    hw: { unclassified: 'Gemeindestraße', road: 'Straße', tertiary: 'Landesstraße', tertiary_link: 'Landesstraße',
+      secondary: 'Landesstraße B', secondary_link: 'Landesstraße B', primary: 'Bundesstraße', primary_link: 'Bundesstraße',
+      trunk: 'Schnellstraße', trunk_link: 'Schnellstraße' },
+  },
   mallorca: {
     name: 'Mallorca', area: 'Mallorca',
     bounds: L.latLngBounds([39.20, 2.25], [40.00, 3.55]), home: [39.62, 2.95], zoom: 10,
@@ -929,7 +937,7 @@ function setRegion(key) {
   const changed = key !== S.region;
   S.region = key; store.set('region', key); RG = REGIONS[key];
   document.querySelectorAll('#regionSeg button').forEach((b) => b.classList.toggle('active', b.dataset.region === key));
-  $('inDest').placeholder = key === 'mallorca' ? 'Wohin auf Mallorca?' : 'Wohin?';
+  $('inDest').placeholder = key === 'mallorca' ? 'Wohin auf Mallorca?' : key === 'austria' ? 'Wohin in Österreich?' : 'Wohin?';
   if (!changed) return;
   if (S.start && !S.start.isGps) setPoint('start', null);
   setPoint('dest', null);
