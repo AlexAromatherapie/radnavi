@@ -307,13 +307,25 @@ function onPos(p) {
   drawMe();
   if (S.nav) navUpdate();
 }
+let lastGpsErr = null;
 function onPosErr(err) {
-  if (err.code === 1 && !gpsDeniedShown) {
-    gpsDeniedShown = true;
-    toast('Standort nicht freigegeben. iPhone: Einstellungen → Datenschutz → Ortungsdienste → Safari-Websites → „Beim Verwenden“.', 9000);
+  lastGpsErr = err;
+  if (err.code === 1) {
+    // Erlaubnis verweigert: Watch beenden, damit ein neuer Versuch erneut fragen kann
+    try { navigator.geolocation.clearWatch(watchId); } catch (e) { /* egal */ }
+    watchId = null;
+    if (!gpsDeniedShown) { gpsDeniedShown = true; toast(gpsErrText(err), 9000); }
   }
 }
+function gpsErrText(err) {
+  if (!navigator.geolocation) return 'Dieses Gerät/dieser Browser bietet keine Ortung an.';
+  if (!window.isSecureContext) return 'Ortung nur über https möglich.';
+  if (err && err.code === 1) return 'Ortung blockiert (Fehler 1). Bitte RadNavi in Safari öffnen und dort auf „Erlauben“ tippen.';
+  if (err && err.code === 2) return 'Standort nicht verfügbar (Fehler 2). Flugmodus aus, WLAN an oder kurz ans Fenster/nach draußen gehen.';
+  return 'Noch kein GPS-Signal (Fehler 3). Kurz ans Fenster/nach draußen gehen und nochmal tippen.';
+}
 function waitForFix(ms = 20000) {
+  lastGpsErr = null;
   startWatch();
   const fresh = () => S.pos && Date.now() - S.pos.t < 30000;
   if (fresh()) return Promise.resolve(S.pos);
@@ -321,7 +333,7 @@ function waitForFix(ms = 20000) {
     const t0 = Date.now();
     const iv = setInterval(() => {
       if (fresh()) { clearInterval(iv); res(S.pos); }
-      else if (Date.now() - t0 > ms) { clearInterval(iv); rej(new Error('Kein GPS-Standort. Bitte Ortung erlauben oder Start manuell eingeben.')); }
+      else if ((lastGpsErr && lastGpsErr.code === 1) || Date.now() - t0 > ms) { clearInterval(iv); rej(new Error(gpsErrText(lastGpsErr))); }
     }, 250);
   });
 }
