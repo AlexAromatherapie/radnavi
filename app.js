@@ -327,6 +327,8 @@ function gpsErrText(err) {
 function waitForFix(ms = 20000) {
   lastGpsErr = null;
   startWatch();
+  // zweiter Weg: einmalige, grobe Ortung (WLAN) – liefert unter iOS oft schneller und löst die Erlaubnis-Frage zuverlässig aus
+  try { navigator.geolocation.getCurrentPosition(onPos, onPosErr, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }); } catch (e) { /* egal */ }
   const fresh = () => S.pos && Date.now() - S.pos.t < 30000;
   if (fresh()) return Promise.resolve(S.pos);
   return new Promise((res, rej) => {
@@ -354,11 +356,14 @@ function drawMe() {
   else h.style.display = 'none';
 }
 $('btnLocate').addEventListener('click', () => {
+  toast('Suche deinen Standort …', 25000);
   waitForFix().then((p) => {
+    toast('Standort gefunden ✔', 2000);
     map.setView([p.lat, p.lon], Math.max(map.getZoom(), 15));
     if (S.nav) { S.nav.follow = true; $('btnRecenter').hidden = true; }
-  }).catch((e) => toast(e.message));
+  }).catch((e) => toast(e.message, 20000));
 });
+$('toast').addEventListener('click', () => { $('toast').hidden = true; });
 
 // ------------------------------------------------------------------ Profil & Routing
 let profileTpl = null;
