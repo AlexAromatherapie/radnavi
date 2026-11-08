@@ -1,4 +1,4 @@
-/* RadNavi Rur-Eifel – sichere Rad-Navigation (Rennrad / MTB)
+/* RadNavi Rur-Eifel – sichere Rad-Navigation (Gravelbike / MTB)
    Routing: BRouter mit eigenem Sicherheitsprofil (profile.brf)
    Radweg-Prüfung: Auswertung der OSM-Tags jedes Routenabschnitts */
 'use strict';
@@ -30,7 +30,7 @@ const CATS = {
   fstrasse: { label: 'Fahrradstraße',            color: '#059669', verified: true, onto: 'in die Fahrradstraße' },
   cwtrack:  { label: 'Radweg neben Fahrbahn',    color: '#10b981', verified: true, onto: 'auf den Radweg neben der Fahrbahn' },
   cwlane:   { label: 'Radfahrstreifen',          color: '#84cc16', onto: 'auf den Radfahrstreifen' },
-  gehrad:   { label: 'Gehweg, Rad frei',         color: '#06b6d4', onto: 'auf den Gehweg, Radfahrer frei' },
+  gehrad:   { label: 'Autofreier Weg, Rad frei', color: '#06b6d4', onto: 'auf den autofreien Weg' },
   track:    { label: 'Wirtschaftsweg',           color: '#3b82f6', onto: 'auf den Wirtschaftsweg' },
   path:     { label: 'Pfad / Trail',             color: '#8b5cf6', onto: 'auf den Pfad' },
   ruhig:    { label: 'Wohn-/Nebenstraße',        color: '#eab308', onto: 'in die Nebenstraße' },
@@ -96,7 +96,7 @@ function toast(msg, ms = 4500) {
 
 // ------------------------------------------------------------------ Zustand
 const S = {
-  mode: store.get('mode', 'road'),
+  mode: store.get('mode', 'gravel') === 'mtb' ? 'mtb' : 'gravel',
   safety: store.get('safety', 1.0),
   hills: store.get('hills', false),
   voice: store.get('voice', true),
@@ -373,9 +373,9 @@ async function profileId(force) {
   const key = profileKey(), c = profileCache[key];
   if (!force && c && Date.now() - c.t < 3 * 3600e3) return c.id;
   if (!profileTpl) { const r = await fetch('profile.brf', { cache: 'no-cache' }); profileTpl = await r.text(); }
-  const up = S.hills ? (S.mode === 'road' ? '60' : '40') : '0';
+  const up = S.hills ? (S.mode === 'gravel' ? '60' : '40') : '0';
   const txt = profileTpl.split('%K%').join(Number(S.safety).toFixed(2))
-    .split('%ROAD%').join(S.mode === 'road' ? 'true' : 'false')
+    .split('%GRAVEL%').join(S.mode === 'gravel' ? 'true' : 'false')
     .split('%UPCOST%').join(up);
   const r = await fetch(BROUTER + '/profile', { method: 'POST', body: txt, headers: { 'Content-Type': 'text/plain' } });
   const j = await r.json();
@@ -420,7 +420,7 @@ async function computeRoute(opts = {}) {
       try { gj = await fetchRoute(url(await profileId(true))); }
       catch (e2) {
         if (e2.noRoute) throw e2;
-        gj = await fetchRoute(url(S.mode === 'road' ? 'fastbike' : 'trekking'));
+        gj = await fetchRoute(url('trekking'));
         fallback = true;
       }
     }
@@ -458,7 +458,7 @@ function classify(t) {
   if (['footway', 'pedestrian', 'corridor', 'platform'].includes(hw)) return (bike === 'yes' || bike === 'permissive') ? 'gehrad' : 'schieben';
   if (bike === 'dismount') return 'schieben';
   if (hw === 'track') return 'track';
-  if (hw === 'path' || hw === 'bridleway') return 'path';
+  if (hw === 'path' || hw === 'bridleway') return (bike === 'yes' || bike === 'permissive') ? 'gehrad' : 'path';
   if (['residential', 'living_street', 'service'].includes(hw)) return 'ruhig';
   if (['unclassified', 'road', 'tertiary', 'tertiary_link'].includes(hw)) return 'strasse';
   if (['secondary', 'secondary_link', 'primary', 'primary_link', 'trunk', 'trunk_link', 'motorway', 'motorway_link'].includes(hw)) return 'haupt';
@@ -514,7 +514,7 @@ function parseRoute(gj) {
 
   const verifiedLen = CAT_ORDER.filter((c) => CATS[c].verified).reduce((a, c) => a + catLen[c], 0);
   const ascend = +p['filtered ascend'] || 0;
-  const time = total / ((S.mode === 'road' ? 24 : 15) / 3.6) + ascend * (S.mode === 'road' ? 6 : 9);
+  const time = total / ((S.mode === 'gravel' ? 20 : 15) / 3.6) + ascend * (S.mode === 'gravel' ? 7 : 9);
 
   const R = { pts, D, total, msgs, edgeMsg, edgeCat, runs, catLen, verifiedLen, routeLen, ascend, time,
     bounds: L.latLngBounds(pts.map((q) => [q.lat, q.lon])) };
@@ -591,7 +591,7 @@ function showSegInfo(R, ll, run) {
   const t = R.msgs[R.edgeMsg[best]].tags, c = CATS[run.cat];
   const tagStr = Object.keys(t).filter((k) => k !== 'reversedirection').map((k) => `${k}=${t[k]}`).join(', ');
   const verdict = c.verified ? '✔ eindeutig als Radverkehrsanlage eingetragen'
-    : run.cat === 'gehrad' ? 'Kein Radweg: Gehweg mit Freigabe „Radfahrer frei“, Schrittgeschwindigkeit'
+    : run.cat === 'gehrad' ? 'Kein offizieller Radweg, aber autofrei – Radfahren erlaubt (Rücksicht auf Fußgänger)'
     : c.warn ? '⚠ kein Radweg – gemeinsam mit Autoverkehr' : 'kein ausgewiesener Radweg, aber ohne Durchgangsverkehr';
   L.popup({ maxWidth: 260 }).setLatLng(ll).setContent(
     `<div class="seginfo"><b>${esc(c.label)}</b><br>${esc(verdict)}<br>Abschnitt: ${fmtKm(run.len)}${onRoute(t) ? '<br>Teil einer beschilderten Radroute' : ''}<br><code>OSM: ${esc(tagStr || '–')}</code></div>`
@@ -605,7 +605,8 @@ function renderSheet(R) {
   $('sDist').textContent = fmtKm(R.total);
   $('sTime').textContent = fmtDur(R.time);
   $('sUp').textContent = nf0.format(R.ascend) + ' m';
-  $('sVerified').textContent = pct(R.verifiedLen / R.total) + ' ausgewiesene Radwege';
+  const carFree = ['radweg', 'cwtrack', 'gehrad', 'track', 'path'].reduce((a, c) => a + R.catLen[c], 0);
+  $('sVerified').textContent = `${pct(carFree / R.total)} autofrei · ${pct(R.verifiedLen / R.total)} Radweg`;
   $('btnAlt').textContent = R.alt ? `Alternative ${R.alt + 1}/4` : 'Alternative';
 
   const bar = $('catBar'), leg = $('catLegend'); bar.innerHTML = ''; leg.innerHTML = '';
@@ -714,14 +715,14 @@ $('btnAlt').addEventListener('click', () => { S.alt = (S.alt + 1) % 4; computeRo
 
 // ------------------------------------------------------------------ GPX
 function buildGpx(R) {
-  const name = `RadNavi ${RG.name} ${R.mode === 'road' ? 'Rennrad' : 'MTB'}: ${R.from.label} – ${R.to.label}`;
+  const name = `RadNavi ${RG.name} ${R.mode === 'gravel' ? 'Gravel' : 'MTB'}: ${R.from.label} – ${R.to.label}`;
   const pts = R.pts.map((q) => `<trkpt lat="${q.lat.toFixed(6)}" lon="${q.lon.toFixed(6)}">${q.ele != null ? `<ele>${q.ele}</ele>` : ''}</trkpt>`).join('\n');
   const wpts = R.instr.filter((i) => i.warn).map((i) => { const q = R.pts[i.idx]; return `<wpt lat="${q.lat.toFixed(6)}" lon="${q.lon.toFixed(6)}"><name>${esc(i.text)}</name><desc>${esc(i.warn)}</desc></wpt>`; }).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="RadNavi Rur-Eifel" xmlns="http://www.topografix.com/GPX/1/1">
 <metadata><name>${esc(name)}</name><time>${new Date().toISOString()}</time></metadata>
 ${wpts}
-<trk><name>${esc(name)}</name><type>${R.mode === 'road' ? 'road_cycling' : 'mountain_biking'}</type><trkseg>
+<trk><name>${esc(name)}</name><type>${R.mode === 'gravel' ? 'gravel_cycling' : 'mountain_biking'}</type><trkseg>
 ${pts}
 </trkseg></trk>
 </gpx>`;
