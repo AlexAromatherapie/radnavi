@@ -1,7 +1,7 @@
 {
-  "name": "RadNavi Rur-Eifel",
+  "name": "RadNavi",
   "short_name": "RadNavi",
-  "description": "Sichere Fahrrad-Navigation für Düren, Eifel, Aachen und Köln – Rennrad und Mountainbike.",
+  "description": "Sichere Fahrrad-Navigation für Rur-Eifel (Düren, Aachen, Köln) und Mallorca – Rennrad und Mountainbike.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
