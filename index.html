@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>RadNavi Rur-Eifel</title>
+<meta name="description" content="Sichere Fahrrad-Navigation für Düren, Eifel, Aachen und Köln – Rennrad und Mountainbike.">
+<meta name="theme-color" content="#0a8f3c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="RadNavi">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="map"></div>
+
+<!-- Planer -->
+<section id="planner" class="card">
+  <div class="modes">
+    <button type="button" class="mode" data-mode="road">Rennrad</button>
+    <button type="button" class="mode" data-mode="mtb">Mountainbike</button>
+    <button type="button" id="btnSettings" class="icon-btn" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.9a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1L11 21h4l.4-2.9a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+    </button>
+  </div>
+  <div class="fields">
+    <div class="field"><span class="dot start"></span><input id="inStart" placeholder="Start: Mein Standort" autocomplete="off" enterkeyhint="search"><button type="button" class="clear" data-for="start" aria-label="Start löschen">×</button></div>
+    <div class="field"><span class="dot dest"></span><input id="inDest" placeholder="Wohin?" autocomplete="off" enterkeyhint="search"><button type="button" class="clear" data-for="dest" aria-label="Ziel löschen">×</button></div>
+    <button type="button" id="btnSwap" class="swap" aria-label="Start und Ziel tauschen">⇅</button>
+  </div>
+  <div id="results" class="results" hidden></div>
+</section>
+
+<!-- Routen-Übersicht -->
+<section id="routeSheet" class="sheet" hidden>
+  <button type="button" id="btnGrab" class="grab" aria-label="Details ein-/ausklappen"><span></span></button>
+  <div class="summary">
+    <div><b id="sDist">–</b><small>Distanz</small></div>
+    <div><b id="sTime">–</b><small>Fahrzeit ca.</small></div>
+    <div><b id="sUp">–</b><small>Anstieg</small></div>
+  </div>
+  <div class="actions">
+    <button type="button" id="btnNav" class="primary">Navigation starten</button>
+    <button type="button" id="btnAlt">Alternative</button>
+    <button type="button" id="btnGpx">GPX</button>
+  </div>
+  <button type="button" id="btnVerify" class="verify">
+    <div class="verify-head"><span>Radweg-Prüfung <small id="moreHint">Details ▾</small></span><b id="sVerified"></b></div>
+    <div id="catBar" class="catbar"></div>
+  </button>
+  <div class="details">
+    <ul id="catLegend" class="legend"></ul>
+    <div id="warnings"></div>
+    <div class="elev-wrap">
+      <div class="elev-head"><span>Höhenprofil</span><span id="elevInfo"></span></div>
+      <canvas id="elev"></canvas>
+    </div>
+    <p id="routeNote" class="small"></p>
+  </div>
+</section>
+
+<!-- Navigation -->
+<section id="navTop" class="nav-top" hidden>
+  <div id="navArrow" class="nav-arrow"></div>
+  <div class="nav-txt">
+    <div id="navDist" class="nav-dist"></div>
+    <div id="navText" class="nav-text"></div>
+    <div id="navSub" class="nav-sub"></div>
+  </div>
+</section>
+<section id="navBottom" class="nav-bottom" hidden>
+  <div><b id="navRemain">–</b><small>bis Ziel</small></div>
+  <div><b id="navEta">–</b><small>Ankunft</small></div>
+  <div><b id="navSpeed">–</b><small>km/h</small></div>
+  <button type="button" id="btnStop" class="stop">Beenden</button>
+</section>
+
+<button type="button" id="btnRecenter" class="pill" hidden>Zentrieren</button>
+<button type="button" id="btnLocate" class="fab" aria-label="Mein Standort">
+  <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.1A7 7 0 0 0 13 5.1V3h-2v2.1A7 7 0 0 0 5.1 11H3v2h2.1a7 7 0 0 0 5.9 5.9V21h2v-2.1a7 7 0 0 0 5.9-5.9H21v-2zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+</button>
+
+<!-- Einstellungen -->
+<div id="settingsBack" class="backdrop" hidden></div>
+<section id="settings" class="sheet settings" hidden>
+  <h2>Einstellungen</h2>
+  <label class="lbl" for="rgSafety">Routenwahl</label>
+  <input type="range" id="rgSafety" min="0.4" max="1.6" step="0.1">
+  <div class="range-labels"><span>Direkter</span><span id="safetyVal"></span><span>Sicherer</span></div>
+  <p class="small">„Sicherer“ nimmt größere Umwege in Kauf, um Straßen mit Autoverkehr zu meiden.</p>
+  <label class="switch"><input type="checkbox" id="cbHills"><span>Steigungen meiden</span></label>
+  <label class="switch"><input type="checkbox" id="cbVoice"><span>Sprachansagen</span></label>
+  <div class="lbl">Karte</div>
+  <div class="seg" id="layerSeg">
+    <button type="button" data-layer="cyclosm">Rad</button>
+    <button type="button" data-layer="osm">Standard</button>
+    <button type="button" data-layer="topo">Topo</button>
+  </div>
+  <p class="small">Tipp: In Safari „Teilen → Zum Home-Bildschirm“ wählen, dann startet RadNavi wie eine App. Während der Navigation bleibt das Display an. iPhone am Lenker sichern, nicht während der Fahrt bedienen.</p>
+  <p class="small">Kartendaten © OpenStreetMap-Mitwirkende (ODbL) · Routing: BRouter (brouter.de) · Kartenstil: CyclOSM / OpenTopoMap · Suche: Photon (komoot). Die Radweg-Prüfung beruht auf OpenStreetMap-Daten und ersetzt nicht den Blick auf die Beschilderung vor Ort.</p>
+  <button type="button" id="btnCloseSettings" class="primary wide">Fertig</button>
+</section>
+
+<div id="loading" class="loading" hidden><span class="spin"></span>Route wird berechnet …</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
